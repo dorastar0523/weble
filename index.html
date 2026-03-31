@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    :root { --p: #6a5acd; --bg: rgba(255, 255, 255, 0.95); --text: #333; }
+    
+    /* --- 1. 頂部純白區域樣式 --- */
+    body { background: #ffffff !important; margin: 0; font-family: "Times New Roman", "Noto Serif TC", serif; color: var(--text); overflow-x: hidden; }
+    .top-content { width: 100%; background: #ffffff; display: flex; flex-direction: column; align-items: center; padding-top: 20px; }
+
+    /* 播放器 */
+    .player-container {
+      background: rgba(255, 255, 255, 0.85); padding: 18px 25px; border-radius: 22px;
+      box-shadow: 0 8px 30px rgba(106, 90, 205, 0.12); border: 1px solid rgba(106, 90, 205, 0.1);
+      display: flex; align-items: center; gap: 25px; backdrop-filter: blur(12px);
+      width: 92%; max-width: 450px; margin: 0 auto 30px auto;
+    }
+    .record-box { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+    .record {
+      width: 100%; height: 100%;
+      background: radial-gradient(circle, #333 2%, #111 30%, #333 31%, #111 50%, #333 51%, #111 70%, #333 71%, #111 100%);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      animation: rotate 6s linear infinite; animation-play-state: paused;
+    }
+    .record-center { width: 35%; height: 35%; border-radius: 50%; background-image: url('https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/394f689230e73f8fb61f7ad38ef09d2c.jpg'); background-size: cover; border: 2px solid #111; z-index: 2; }
+    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .playing .record { animation-play-state: running; }
+    .info-side { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    .now-playing { font-size: 14px; font-weight: bold; color: var(--p); }
+    .progress-container { width: 100%; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+    .progress-bar { flex-grow: 1; height: 4px; background: rgba(0,0,0,0.1); border-radius: 5px; position: relative; }
+    .progress-current { width: 0%; height: 100%; background: var(--p); border-radius: 5px; position: absolute; }
+    .time-display { font-size: 11px; color: #888; min-width: 30px; }
+    .controls { display: flex; align-items: center; justify-content: space-between; color: #666; }
+    .btn { cursor: pointer; padding: 5px; }
+    .play-pause-btn { font-size: 20px; color: var(--p); width: 25px; text-align: center; }
+    .active-btn { color: var(--p) !important; font-weight: bold; }
+
+    /* 開場與計時器 */
+    .intro-section { height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+    .line { opacity: 0; font-size: 18px; font-style: italic; letter-spacing: 5px; margin: 10px 0; }
+    .line-1 { animation: fadeIn 3s forwards; }
+    .line-2 { animation: fadeIn 3s forwards; animation-delay: 1s; }
+    .timer-section { text-align: center; padding: 20px 0; }
+    #count { font-size: 28px; color: var(--p); }
+
+    /* Wiki 與 圖鑑 通用捲軸容器 */
+    .wiki-section, .char-container { 
+      max-width: 800px; width: 92%; margin: 15px auto; background: var(--bg); border-radius: 12px; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid rgba(106, 90, 205, 0.1); overflow: hidden;
+    }
+    .wiki-content-area, .char-scroll-area { padding: 0 20px 20px 20px; max-height: 450px; overflow-y: auto; }
+    .tabs, .char-nav { display: flex; justify-content: center; gap: 10px; padding: 15px 0; background: #fff; position: sticky; top: 0; z-index: 10; border-bottom: 1px solid #eee; }
+    .tab-btn, .char-node { cursor: pointer; padding: 6px 15px; border: 1px solid var(--p); border-radius: 20px; color: var(--p); font-size: 13px; }
+    .tab-btn.active, .char-node.active { background: var(--p); color: white; }
+
+    /* 內容排版 */
+    .content-pane, .char-content { display: none; line-height: 1.8; animation: fadeIn 0.4s ease; }
+    .content-pane.active, .char-content.active { display: block; }
+    .char-flex { display: flex; gap: 20px; align-items: flex-start; padding-top: 15px; }
+    .text-side { flex: 1; }
+    .img-side { width: 300px; flex-shrink: 0; }
+    .img-side img { width: 100%; border-radius: 8px; }
+    h3, .char-title { color: var(--p); font-size: 22px; border-left: 5px solid var(--p); padding-left: 12px; margin: 15px 0; }
+    .section-title { font-weight: bold; color: var(--p); margin-top: 10px; display: block; }
+    .support-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px dashed #eee; }
+    .support-avatar { width: 60px; height: 60px; border-radius: 50%; overflow: hidden; flex-shrink: 0; border: 1px solid #eee; background: #f9f9f9; display: flex; align-items: center; justify-content: center; }
+    .support-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* --- 2. 獨立畫廊區域樣式 --- */
+    .gallery-section {
+      width: 100%; padding: 60px 0; margin-top: 50px;
+      background-image: linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)), url('https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/21d1f82479dc6eec080d9e3f0d177698.jpg') !important;
+      background-position: center; background-size: cover; background-attachment: fixed;
+    }
+    .gallery-title { text-align: center; color: #8a7f9c; font-size: 24px; letter-spacing: 12px; margin-bottom: 10px; }
+    .gallery-outer { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .scroll-container { display: inline-flex; padding: 20px 100px 60px 100px; gap: 40px; align-items: center; }
+    .art-frame { background: #fff; padding: 10px; box-shadow: 0 12px 30px rgba(0,0,0,0.12); border: 1px solid #ddd; transition: 0.4s; cursor: pointer; }
+    .art-frame:hover { transform: translateY(-10px); }
+    .art-frame img { max-height: 400px; width: auto; }
+    .art-col { display: flex; flex-direction: column; gap: 20px; }
+    .row-inner { display: flex; gap: 12px; }
+
+    .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: none; justify-content: center; align-items: center; z-index: 2000; cursor: zoom-out; }
+    .lightbox.active { display: flex; }
+    .lightbox img { max-width: 90%; max-height: 90%; border: 5px solid #fff; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @media (max-width: 600px) { .char-flex { flex-direction: column; align-items: center; } .img-side { width: 100%; max-width: 280px; } }
+  </style>
+</head>
+<body>
+
+<div class="top-content">
+  <div class="player-container" id="player">
+    <div class="record-box"><div class="record"><div class="record-center"></div></div></div>
+    <div class="info-side">
+      <div class="now-playing">《 蜜月アン・ドゥ・トロワ 》</div>
+      <div class="progress-container" id="pcArea">
+        <div class="progress-bar"><div class="progress-current" id="pBar"></div></div>
+        <div class="time-display" id="tText">0:00</div>
+      </div>
+      <div class="controls">
+        <div class="btn" style="color:#ff6b6b; cursor: default;">❤︎</div>
+        <div class="btn" id="loopBtn" onclick="toggleLoop()">⇆</div>
+        <div class="btn" onclick="skipTime(-10)">◁</div>
+        <div class="btn play-pause-btn" onclick="togglePlay()" id="pBtn">▶</div>
+        <div class="btn" onclick="skipTime(10)">▷</div>
+        <div class="btn" onclick="resetToStart()">↻</div>
+      </div>
+    </div>
+    <audio id="audio" preload="auto">
+      <source src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/蜜月アン・ドゥ・トロワ_ DATEKEN 【ピアノカバー】_320k (1).mp3">
+    </audio>
+  </div>
+
+  <div class="intro-section">
+    <div class="line line-1">這是關於面臨困境的青少年們</div>
+    <div class="line line-2">如何成長的故事</div>
+  </div>
+
+  <div class="timer-section">
+    <div style="color:var(--p); font-weight:bold; margin-bottom:5px;">Eleanora Cressel & Lucien Valemont</div>
+    <div id="count">Loading...</div>
+  </div>
+
+  <div class="wiki-section">
+    <div class="tabs">
+      <div class="tab-btn active" onclick="openWiki(event, 'world')">✧༺世界觀༻✧</div>
+      <div class="tab-btn" onclick="openWiki(event, 'nation')">✧˖°國家</div>
+      <div class="tab-btn" onclick="openWiki(event, 'family')">✧˖°家族</div>
+    </div>
+    <div class="wiki-content-area" id="wikiScroll">
+      <div id="world" class="content-pane active">
+        <h3>✧ 核心設定</h3>
+        ✦ 科技、階級、禮儀與普遍思想道德與中世紀歐洲相似，但仍有捏造成分<br>
+        ✦ 擁有魔法系統，黑市有蠻多魔藥與禁書的交易<br>
+        ✦ 魔法的原理是透過魔力操縱原子移動，但世人們並不知道「原子」的概念<br>
+        ✦ 黑魔法為操縱生物細胞（尤其神經細胞）的魔法，但這些魔法的使用途徑如果有經過法律認證的話就是合法的普通魔法（有點像是嗎啡能當麻醉也能當毒品的概念）<br>
+        ✦ 為避免幼兒不會控制魔力時就對生物使用魔力，所以嬰兒出生時都會施加魔法加以限制
+      </div>
+      <div id="nation" class="content-pane">
+        <h3>✧ 希鷺倫 (Silerune)</h3>
+        ✦ 北方強國，坐擁豐富擴產，因此工業發達<br>
+        ✦ 將「水」視為信仰，當作與上帝溝通的渠道，秋季的豐收季時會舉辦慶典「潤恩節」，皇帝會邀請水系魔法師上台表演，民間也會有大量的攤販舉國歡慶<br>
+        ✦ 有北方聖地「艾爾哈爾達（Eirhalda）」，氣候雖寒冷但仍有許多人來朝聖<br>
+        <h3>✧ 瓦爾托梅爾 (Valtomere)</h3>
+        ✦ 南方強國，因氣候溫暖盛產農產<br>
+        ✦ 內鬥頻繁，治安不穩，黑魔法師較多
+      </div>
+      <div id="family" class="content-pane">
+        <h3>✧ 克雷瑟家族 (Cressel)</h3>
+        ✦ 地位：公爵<br>
+        ✦ 財力雄厚，領地大，領地之一即聖地艾爾哈爾達<br>
+        ✦ 公爵（雷納德•克雷瑟）平日個性溫和、寵妻女，管理政治時殺伐果斷<br>
+        ✦ 公爵夫人長年臥病在床，因此只育有一女<br>
+        <h3>✧ 法雷蒙家族 (Valemont)</h3>
+        ✦ 地位：伯爵<br>
+        ✦ 前伯爵（傑羅得）為國家守住邊疆重要地域卻壯烈犧牲，再加上夫人已難產去世，其遺孤──路西恩•法雷蒙被現公爵（艾多里安）收養<br>
+        ✦ 艾多里安與其妻（賽拉菲娜）憎恨擁有光環的父子，但又仰賴二人的名聲，因此以各種方式（包括但不限於打罵、禁食）將路西恩訓練成完美少爺<br>
+        ✦ 二人之子──席昂•法雷蒙因也在父母的高壓教育成長，對擁有強烈光環的路西恩有嫉妒心，常常嘲諷、欺負路西恩，但心地並不壞
+      </div>
+    </div>
+  </div>
+
+  <div class="char-container">
+    <div class="char-nav">
+      <div class="char-node active" onclick="showChar(event, 'c1')">艾蕾諾菈</div>
+      <div class="char-node" onclick="showChar(event, 'c2')">路西恩</div>
+      <div class="char-node" onclick="showChar(event, 'c3')">其他配角</div>
+    </div>
+    <div class="char-scroll-area" id="charScroll">
+      <div id="c1" class="char-content active">
+        <div class="char-flex">
+          <div class="text-side">
+            <div class="char-title">艾蕾諾菈·克雷瑟 (Eleanora Cressel)</div>
+            <span class="section-title">★ 基本資訊</span>- 性別：女 / 年齡：12歲 / 身高：148 / 路西恩的聯姻對象
+            <span class="section-title">★ 外貌與穿著</span>✦ 紫羅蘭色長髮+靛藍色瞳眸，如人偶般精緻<br>✦ 常綁公主頭配大蝴蝶結，佩戴寶石項鍊(母親送給自己的禮物）
+            <span class="section-title">★ 個性特質</span>✦ 寡言/少笑，認為兩種行為都耗能量。通常講話字數都偏少，大部分回覆以點頭搖頭代替<br>✦ 智商超群，魔法資質高，但並沒有要展露頭角的想法<br>✦ 洞悉惡意卻反應薄弱，帶點天然呆屬性
+          </div>
+          <div class="img-side"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/無標題855_20250528195215 (1).png"></div>
+        </div>
+      </div>
+      <div id="c2" class="char-content">
+        <div class="char-flex">
+          <div class="text-side">
+            <div class="char-title">路西恩・法雷蒙 (Lucien Valemont)</div>
+            <span class="section-title">★ 基本資訊</span>- 性別：男 / 年齡：12歲 / 身高：161 / 艾蕾諾菈的聯姻對象
+            <span class="section-title">★ 外貌與穿著</span>✦ 白短髮+不對稱鬢髮，金黃色雙瞳<br>✦ 戴黑十字架耳環與白手套
+            <span class="section-title">★ 個性特質</span>✦ 因長期受法雷蒙伯爵與伯爵夫人虐待，養成腹黑屬性。常掛紳士笑容，實則擅長暗諷<br>✦ 智商偏高，有操盤政治的潛質，但目前心智不成熟，面對超出預想範圍的事較容易慌亂<br>✦ 內在敏感脆弱的傲嬌少年，面對心上人易害羞。
+          </div>
+          <div class="img-side"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/無標題855_20250528195215.png"></div>
+        </div>
+      </div>
+      <div id="c3" class="char-content">
+        <div class="support-item">
+          <div class="support-avatar"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/無標題886_20250618214443.png"></div>
+          <div><b>✧ 米蕾優·布朗雪</b><br>✦ 艾蕾諾菈的貼身女僕。溫和且是少數能讀懂艾蕾諾菈心意的人。過去是在農村成長的平民，力氣頗大也擅長家事</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/無標題913_20250708151336.png"></div>
+          <div><b>✧ 莉雪·瑟蘭</b><br>✦ 瑟蘭侯爵千金。家族長年與克雷瑟家不對付。因家教+心儀路西恩對艾蕾諾菈心生嫉恨</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar">[ 席恩 ]</div>
+          <div><b>✧ 席恩·法雷蒙</b><br>✦ 路西恩的表哥。養成粗俗又自卑的個性，嫉妒路西恩所擁有的聲望與能力</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/無標題915_20260109111842.png"></div>
+          <div><b>✧ 艾洛蒂·拉維捏</b><br>✦ 瓦爾托梅爾的公爵千金。艾蕾諾菈的筆友，率真靈活，擅長引導他人走出傷痛</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar">[ 伊維爾 ]</div>
+          <div><b>★ 伊維爾·艾凡</b><br>✦ 魔法學院的校長，被譽為「神之子」，舉止跳脫古怪，實力強大到足以滅國</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar">[ 奧斯丁 ]</div>
+          <div><b>★ 奧斯丁·費雪</b><br>✦ 伊維爾的管家，路西恩前禮儀教師。原本身分不凡，被剝奪地位後被伊維爾僱用</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar">[ 卡修斯 ]</div>
+          <div><b>★ 卡修斯·塞西爾</b><br>✦ 希鷺倫的二王子。有野心且深信自己會成為國王，對人民有實質行動。喜歡艾蕾諾菈並試圖拉近距離</div>
+        </div>
+        <div class="support-item">
+          <div class="support-avatar">[ 管理者 ]</div>
+          <div><b>★ 管理者</b><br>✦ 類似神明的存在，沒有感情但尊重人類倫理。會幻化成神寵想要的樣子與人溝通</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gallery-section">
+  <div class="gallery-title">༺ GALLERY ༻</div>
+  <div class="gallery-outer">
+    <div class="scroll-container">
+      <div class="art-col"><div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/IMG_5697.png"></div></div>
+      <div class="art-col">
+        <div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C951_20260118020109.png"></div>
+        <div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1067_20260118005441.png"></div>
+      </div>
+      <div class="art-col"><div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/FB_IMG_1749826495034.jpg"></div></div>
+      <div class="art-col">
+        <div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1033_20260101025628.png"></div>
+        <div class="row-inner">
+          <div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1102_20260208235836.png"></div>
+          <div class="art-frame" onclick="openImg(this)"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1102_20260208235846.png"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lb" onclick="this.classList.remove('active')"><img id="lbImg"></div>
+
+<script>
+  const audio = document.getElementById('audio');
+  const pBar = document.getElementById('pBar');
+  const tText = document.getElementById('tText');
+  const pBtn = document.getElementById('pBtn');
+
+  function togglePlay() {
+    if (audio.paused) {
+      audio.play().then(() => {
+        document.getElementById('player').classList.add('playing');
+        pBtn.innerText = '❚❚';
+      }).catch(e => console.log("需點擊互動"));
+    } else {
+      audio.pause();
+      document.getElementById('player').classList.remove('playing');
+      pBtn.innerText = '▶';
+    }
+  }
+
+  audio.ontimeupdate = () => {
+    if (!audio.duration) return;
+    pBar.style.width = (audio.currentTime / audio.duration) * 100 + "%";
+    let m = Math.floor(audio.currentTime / 60), s = Math.floor(audio.currentTime % 60);
+    tText.innerText = `${m}:${s < 10 ? '0' + s : s}`;
+  };
+
+  function skipTime(s) { audio.currentTime += s; }
+  function resetToStart() { audio.currentTime = 0; if (audio.paused) togglePlay(); }
+  function toggleLoop() { audio.loop = !audio.loop; document.getElementById('loopBtn').classList.toggle('active-btn'); }
+  
+  document.getElementById('pcArea').onclick = (e) => {
+    const rect = document.querySelector('.progress-bar').getBoundingClientRect();
+    audio.currentTime = ((e.pageX - rect.left) / rect.width) * audio.duration;
+  };
+
+  const start = new Date(2025, 4, 28);
+  setInterval(() => {
+    const diff = new Date() - start;
+    const d = Math.floor(diff/86400000), h = Math.floor((diff/3600000)%24), m = Math.floor((diff/60000)%60), s = Math.floor((diff/1000)%60);
+    document.getElementById('count').innerText = `${d} Days ${h} Hours ${m} Mins ${s} Secs`;
+  }, 1000);
+
+  function openWiki(e, id) {
+    document.querySelectorAll('.wiki-section .content-pane').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.wiki-section .tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active'); e.currentTarget.classList.add('active');
+    document.getElementById('wikiScroll').scrollTop = 0;
+  }
+
+  function showChar(e, id) {
+    document.querySelectorAll('.char-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.char-node').forEach(n => n.classList.remove('active'));
+    document.getElementById(id).classList.add('active'); e.currentTarget.classList.add('active');
+    document.getElementById('charScroll').scrollTop = 0;
+  }
+
+  function openImg(el) { document.getElementById('lbImg').src = el.querySelector('img').src; document.getElementById('lb').classList.add('active'); }
+</script>
+
+</body>
+                </html>            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C933_20250811052051.png"></div>
+        </div>
+        <div class="art-col col-stack">
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C397_20251222082314.png"></div>
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C393_20251215195508.png"></div>
+        </div>
+        <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1121_20260219211404.png"></div>
+        <div class="art-col col-stack">
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C887_20250622181052.png"></div>
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C887_20250622210234.png"></div>
+        </div>
+        <div class="art-col col-stack">
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1016_20251216121552.png"></div>
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1016_20251216090827.png"></div>
+        </div>
+        <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C878_20250614021733.png"></div>
+        <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C1103_20260210015346.png"></div>
+        <div class="art-col col-stack">
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/FB_IMG_1751735099362.jpg"></div>
+            <div class="art-frame"><img src="https://raw.githubusercontent.com/dorastar0523/my-illustrations/main/%E7%84%A1%E6%A8%99%E9%A1%8C860_20250618164117.png"></div>
+        </div>
+    </div>
+</div>
+
+<div class="music-player">
+    <div class="play-btn" id="playBtn" onclick="togglePlay()">▶</div>
+    <div class="song-info">《 蜜月アン・ドゥ・トロワ 》</div>
+    <audio id="audio" loop src="https://cdn.discordapp.com/attachments/1100476484054941769/1487740314167935020/DATEKEN__320k_1.mp3?ex=69ca3da3&is=69c8ec23&hm=4f23c0dc5cb81e7397c99795c47d5df6aaeeac29c211da71c7b9f49db9f0a2e6&"></audio>
+</div>
+
+<script>
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    function togglePlay() {
+        if (audio.paused) { audio.play(); playBtn.innerText = '❚❚'; }
+        else { audio.pause(); playBtn.innerText = '▶'; }
+    }
+</script>
+</body>
+</html>
